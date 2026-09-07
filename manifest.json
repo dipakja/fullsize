@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Fullsize",
+  "version": "0.1.0",
+  "description": "Grab the highest-quality version of any image, in the format you want.",
+  "permissions": ["downloads", "offscreen"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

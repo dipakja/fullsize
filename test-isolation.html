@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fullsize — hostile host-page fixture</title>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     THE ATTACK. Every rule below is a real pattern found in the wild, written
+     as aggressively as a page plausibly could. None of it can name Fullsize's
+     classes — but it does not need to, because element and universal selectors
+     hit our injected nodes too. If the styling defence in styles.css works, the
+     Save control looks and behaves exactly as it does on a plain page.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  /* 1. Universal !important reset — the bluntest instrument there is. */
+  * {
+    box-sizing: content-box !important;
+    letter-spacing: 3px !important;
+    text-transform: uppercase !important;
+    line-height: 3 !important;
+  }
+
+  /* 2. Element rules aimed at buttons. `all: unset` is the nuclear option;
+        it loses only because a class selector outranks an element one. */
+  button {
+    all: unset !important;
+    display: block !important;
+    background: hotpink !important;
+    color: lime !important;
+    font: 28px/2 "Comic Sans MS", cursive !important;
+    padding: 30px !important;
+    margin: 20px !important;
+    border: 6px dashed red !important;
+    border-radius: 0 !important;
+    opacity: 0.35 !important;
+    box-shadow: none !important;
+    width: 300px !important;
+  }
+
+  /* 3. Rules aimed at divs — our container and menu are divs. */
+  div {
+    position: static !important;
+    float: left !important;
+    visibility: visible !important;
+    background: yellow !important;
+  }
+
+  /* 4. body is positioned AND offset. If the UI were parented to <body>
+        instead of <html>, every coordinate would be wrong by this offset. */
+  body {
+    position: relative !important;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+    border-left: 40px solid #eee;
+  }
+
+  /* 5. A page overlay one below the maximum z-index. We must still be above. */
+  #overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483646 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+    float: none !important;
+  }
+
+  /* Keep the prose legible — the attack above is aimed at the test targets. */
+  .doc, .doc * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    line-height: 1.55 !important;
+    background: transparent !important;
+    float: none !important;
+  }
+  .doc h1 { font-size: 1.5rem; margin: 0 0 .2rem; }
+  .doc h2 { font-size: 1rem; margin: 0 0 .2rem; }
+  .doc p  { margin: .2rem 0 .8rem; color: #444; font-size: .9rem; }
+  .doc code { background: #f0f0f2; padding: .1rem .3rem; border-radius: 4px; font-size: .85em; }
+  .expect { color: #0a7c3f; font-weight: 600; }
+  .case { border-top: 1px solid #ddd; padding: 1.4rem 0; clear: both; }
+  .case img { border: 1px solid #ccc; float: none !important; }
+  #log {
+    clear: both; margin-top: 2rem; padding: .8rem 1rem; background: #f7f7f9 !important;
+    border-radius: 6px; font: 12px/1.6 ui-monospace, Menlo, monospace !important;
+    white-space: pre-wrap; letter-spacing: normal !important; text-transform: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay"></div>
+
+<div class="doc">
+  <h1>Fullsize — hostile host-page fixture</h1>
+  <p>Dev-only. Not part of the shipped extension. This page attacks the injected UI
+     with universal <code>!important</code> rules, <code>button</code> and
+     <code>div</code> element rules, a positioned and offset <code>body</code>, a
+     near-maximum <code>z-index</code> overlay, click-stealing wrappers, and a script
+     that rewrites every button on the page after load.</p>
+  <p><strong>The whole test is one question:</strong> does the Save control look and
+     behave here exactly as it does on <code>test-page.html</code>? Open both side by
+     side. If this page's CSS is reaching our button you will see it immediately —
+     hot pink, Comic Sans, dashed red border, or wildly wrong position.</p>
+</div>
+
+<div class="doc case">
+  <h2>1. Baseline under attack</h2>
+  <p>An ordinary image on a hostile page.
+     <span class="expect">Expect: the normal small dark "Save ▾" pill, correct font,
+     correctly placed at the image's top-right — not pink, not Comic Sans, not shifted
+     by the body's 40px border or its centring margin.</span></p>
+  <img src="https://www.gstatic.com/webp/gallery/1.webp" width="360" alt="baseline">
+</div>
+
+<div class="doc case">
+  <h2>2. Click stealing</h2>
+  <p>The image sits inside a link, wrapped by a container whose capture-phase handler
+     calls <code>stopPropagation()</code> and <code>preventDefault()</code> on every
+     click, mousedown and mouseover. A lightbox would look like this.
+     <span class="expect">Expect: the button still appears, the save still runs, and
+     the log below stays empty — the page must never see our click, and we must never
+     trigger its navigation.</span></p>
+  <div id="thief" style="display:inline-block; float:none !important;">
+    <a href="https://example.com/SHOULD-NOT-NAVIGATE" id="trap">
+      <img src="https://www.gstatic.com/webp/gallery/2.webp" width="360" alt="inside a link">
+    </a>
+  </div>
+</div>
+
+<div class="doc case">
+  <h2>3. Narrow image</h2>
+  <p>120px wide — narrower than the control itself.
+     <span class="expect">Expect: the bar pins to the image's LEFT edge rather than
+     hanging off into the margin.</span></p>
+  <img src="https://www.gstatic.com/webp/gallery/3.webp" width="120" alt="narrow">
+</div>
+
+<div class="doc case">
+  <h2>4. Flush against the right viewport edge</h2>
+  <p><span class="expect">Expect: the control stays fully on screen — clamped inward,
+     never clipped off the right edge or triggering a horizontal scrollbar.</span></p>
+</div>
+<img src="https://www.gstatic.com/webp/gallery/4.webp"
+     style="position:fixed !important; right:0 !important; top:120px !important;
+            width:300px !important; float:none !important; z-index:5 !important;"
+     alt="flush right">
+
+<div class="doc case" style="margin-bottom:0;">
+  <h2>5. Picker near the bottom of the window</h2>
+  <p>Scroll so this image sits at the very bottom, then open the <code>▾</code> menu.
+     <span class="expect">Expect: the menu is clamped upward so all three items stay
+     visible, rather than running off the bottom.</span></p>
+  <img src="https://www.gstatic.com/webp/gallery/5.webp" width="360" alt="bottom of page">
+</div>
+
+<div class="doc">
+  <h2>Page's view of our nodes</h2>
+  <div id="log">waiting…</div>
+</div>
+
+<script>
+  const log = (m) => {
+    const el = document.getElementById('log');
+    if (el.textContent === 'waiting…') el.textContent = '';
+    el.textContent += m + '\n';
+  };
+
+  // Case 2: steal every event we can, in the capture phase, before it can reach
+  // anything inside.
+  const thief = document.getElementById('thief');
+  ['click', 'mousedown', 'mouseover'].forEach((type) => {
+    thief.addEventListener(type, (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (type === 'click') log('FAIL — the page saw a click at ' + new Date().toISOString());
+    }, true);
+  });
+  document.getElementById('trap').addEventListener('click', (e) => {
+    e.preventDefault();
+    log('FAIL — the link fired; Fullsize let the click through');
+  });
+
+  // A page script rewriting every button it can find, twice: once after load and
+  // once after Fullsize has had time to inject. Fullsize's nodes are in the page
+  // DOM, so a page CAN reach them this way — the shadow-root fix noted in
+  // styles.css is what would hide them. For now we only report it.
+  function rewriteButtons(when) {
+    const all = document.querySelectorAll('button');
+    log(`${when}: page sees ${all.length} <button> element(s) in the DOM`);
+    all.forEach((b) => { b.dataset.pageTouched = 'yes'; });
+  }
+  window.addEventListener('load', () => {
+    rewriteButtons('at load');
+    setTimeout(() => rewriteButtons('after 3s (hover the images first)'), 3000);
+  });
+</script>
+
+</body>
+</html>

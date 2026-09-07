@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fullsize — resolver test fixture</title>
+<style>
+  body { font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 6rem; color: #1c1c1e; }
+  h1 { margin-bottom: .2rem; }
+  .sub { color: #666; margin-top: 0; }
+  .warn { background: #fff4e5; border: 1px solid #f0a852; border-radius: 8px;
+          padding: .9rem 1.1rem; margin: 1.4rem 0 2rem; }
+  .case { border-top: 1px solid #e5e5e7; padding: 1.6rem 0; }
+  .case h2 { font-size: 1.05rem; margin: 0 0 .15rem; }
+  .case p { margin: .2rem 0 .9rem; color: #555; font-size: .92rem; }
+  .expect { color: #0a7c3f; font-weight: 600; }
+  code { background: #f3f3f5; padding: .1rem .3rem; border-radius: 4px;
+         font-size: .85em; word-break: break-all; }
+  .case img { max-width: 340px; height: auto; display: block;
+              border: 1px solid #ddd; border-radius: 6px; }
+  #dryrun { border-top: 1px solid #e5e5e7; padding-top: 1.6rem; }
+  #dryrun li { margin-bottom: .45rem; }
+  .tiny { width: 16px; height: 16px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+
+<h1>Fullsize — resolver test fixture</h1>
+<p class="sub">Dev-only. Not part of the shipped extension.</p>
+
+<div class="warn">
+  <strong>Before this page can work:</strong> Chrome does not run content scripts on
+  <code>file://</code> URLs by default. Go to <code>chrome://extensions</code> →
+  <em>Details</em> on the Fullsize card → turn on <strong>Allow access to file URLs</strong>.
+  Then reload this page.
+</div>
+
+<!-- ── 1. Wikimedia thumbnail ─────────────────────────────────────────────── -->
+<div class="case">
+  <h2>1. Wikimedia thumbnail strip</h2>
+  <p>Displayed at <code>250px-</code> (~41 KB). Stripping <code>/thumb/</code> and the
+     <code>NNNpx-</code> prefix reaches the original.
+     <span class="expect">Expect: 800×600 PNG, ~225 KB.</span></p>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/250px-PNG_transparency_demonstration_1.png"
+       alt="Wikimedia thumbnail">
+</div>
+
+<!-- ── 2. Query-param resizer ─────────────────────────────────────────────── -->
+<div class="case">
+  <h2>2. Query-param resizer (imgix / Unsplash style)</h2>
+  <p>Displayed with <code>?w=300&amp;q=60</code> (~11 KB). Dropping the resize params
+     requests the source. <span class="expect">Expect: ~4.7 MB JPEG — the biggest win on this page.</span></p>
+  <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&q=60"
+       alt="Query-param resized photo">
+</div>
+
+<!-- ── 3. srcset with w descriptors ───────────────────────────────────────── -->
+<div class="case">
+  <h2>3. <code>srcset</code> with <code>w</code> descriptors</h2>
+  <p>Three advertised widths; the browser will have loaded a small one.
+     <span class="expect">Expect: the 1600w entry beats <code>currentSrc</code>, then param-stripping beats that.</span></p>
+  <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=200&q=60"
+       srcset="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=200&q=60   200w,
+               https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=70   600w,
+               https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1600&q=80 1600w"
+       sizes="300px"
+       alt="srcset forest">
+</div>
+
+<!-- ── 4. <picture> / <source> ────────────────────────────────────────────── -->
+<div class="case">
+  <h2>4. <code>&lt;picture&gt;</code> with <code>&lt;source&gt;</code></h2>
+  <p>The high-res entries live on the sibling <code>&lt;source&gt;</code>, not the
+     <code>&lt;img&gt;</code> — the case most tools miss.
+     <span class="expect">Expect: the 2000w source is found even though the img tag only knows the small URL.</span></p>
+  <picture>
+    <source srcset="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=75   800w,
+                    https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=2000&q=85 2000w"
+            sizes="300px" type="image/jpeg">
+    <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=200&q=60"
+         alt="picture element misty forest">
+  </picture>
+</div>
+
+<!-- ── 5. Lazy-loaded ─────────────────────────────────────────────────────── -->
+<div class="case">
+  <h2>5. Lazy-load attributes</h2>
+  <p>Real URL parked in <code>data-src</code>; a script swaps it in after a delay, so the
+     image does not exist in the DOM at <code>document_idle</code>.
+     <span class="expect">Expect: the hover button still appears (proves event delegation covers late images).</span></p>
+  <img id="lazy"
+       src="data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+       data-src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&q=70"
+       width="340" height="227"
+       alt="lazy-loaded cat">
+</div>
+
+<!-- ── 6. WebP ────────────────────────────────────────────────────────────── -->
+<div class="case">
+  <h2>6. WebP source (format conversion — Milestone 4)</h2>
+  <p>Served as <code>image/webp</code>.
+     <span class="expect">Expect: "Original" saves a .webp; PNG and JPG produce genuinely converted files.</span></p>
+  <img src="https://www.gstatic.com/webp/gallery/1.webp" alt="WebP sample">
+</div>
+
+<!-- ── 7. Shopify pattern ─────────────────────────────────────────────────── -->
+<div class="case">
+  <h2>7. Shopify <code>_400x400</code> pattern</h2>
+  <p>A live Shopify CDN URL. This asset is small at every size, so the byte count will not
+     change — it is a <em>pattern</em> test.
+     <span class="expect">Expect: candidate list contains the stripped <code>shopify-logo.png</code>, and it loads (no 404 fall-through).</span></p>
+  <img src="https://cdn.shopify.com/s/files/1/0070/7032/files/shopify-logo_400x400.png"
+       alt="Shopify CDN logo">
+</div>
+
+<!-- ── 8. Tiny image ──────────────────────────────────────────────────────── -->
+<div class="case">
+  <h2>8. 16×16 spacer (must be ignored)</h2>
+  <p><span class="expect">Expect: no hover button at all — below the 64×64 minimum.</span></p>
+  <img class="tiny"
+       src="data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+       alt="spacer">
+</div>
+
+<!-- ── 9. Resolver dry-run ────────────────────────────────────────────────── -->
+<div id="dryrun">
+  <h2>9. Resolver dry-run (no network)</h2>
+  <p>URL patterns that are awkward to host live. From Milestone 3, run
+     <code>__fullsizeDryRun()</code> in this page's console to print the candidate list
+     each one produces, and check it against the expectation.</p>
+  <ul>
+    <li><code data-dryrun>https://example.com/wp-content/uploads/2024/05/beach-1024x683.jpg</code>
+        → <span class="expect">beach.jpg</span></li>
+    <li><code data-dryrun>https://cdn.example.com/products/shoe_600x600@2x.jpg</code>
+        → <span class="expect">shoe.jpg</span></li>
+    <li><code data-dryrun>https://res.cloudinary.com/demo/image/upload/w_400,h_300,c_fill/v1571218039/sample.jpg</code>
+        → <span class="expect">/upload/v1571218039/sample.jpg</span></li>
+    <li><code data-dryrun>https://images.example.com/hero.jpg?w=640&h=480&fit=crop&q=70&dpr=2</code>
+        → <span class="expect">hero.jpg with no query</span></li>
+    <li><code data-dryrun>https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/640px-Example.jpg</code>
+        → <span class="expect">/commons/a/a9/Example.jpg</span></li>
+    <li><code data-dryrun>https://example.com/logo.svg</code>
+        → <span class="expect">unchanged — nothing to strip</span></li>
+  </ul>
+</div>
+
+<script>
+  // Case 5: swap the placeholder for the real URL after load, mimicking a lazy gallery.
+  setTimeout(function () {
+    var el = document.getElementById('lazy');
+    el.src = el.dataset.src;
+  }, 1200);
+</script>
+
+</body>
+</html>
