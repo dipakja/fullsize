@@ -140,7 +140,15 @@ Planned or under consideration:
 - **Firefox support.**
 
 ---
-
 ## License
 
 [MIT](LICENSE) — free to use, modify, and build on. Just keep the copyright notice.
+---
+
+<p align="center">
+  <a href="https://buymeacoffee.com/dipps" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="45" />
+  </a>
+</p>
+
+<p align="center"><sub>If Fullsize is useful to you, you can support development ☕</sub></p>
